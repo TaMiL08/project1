@@ -6,11 +6,14 @@ dotenv.config();
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 
-// Priority: Environmental Variable (Vercel) > Local Default
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/auth/google/callback';
+if (!GOOGLE_REDIRECT_URI) {
+    console.error("CRITICAL ERROR: GOOGLE_REDIRECT_URI is missing from process.env! Defaulting to localhost (Auth will fail on Vercel).");
+}
 
-console.log("DEBUG: Using Google Redirect URI:", GOOGLE_REDIRECT_URI);
+const FINAL_REDIRECT_URI = GOOGLE_REDIRECT_URI || 'http://localhost:5000/auth/google/callback';
+console.log("DEBUG: Using Redirect URI ->", FINAL_REDIRECT_URI);
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     console.warn("WARNING: Google Client ID or Secret is missing. Auth will fail.");
@@ -20,7 +23,7 @@ export const getOauth2Client = () => {
     return new google.auth.OAuth2(
         GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET,
-        GOOGLE_REDIRECT_URI
+        FINAL_REDIRECT_URI
     );
 };
 
