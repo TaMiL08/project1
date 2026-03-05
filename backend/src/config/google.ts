@@ -10,30 +10,25 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 
-if (!GOOGLE_REDIRECT_URI) {
-    console.error("CRITICAL ERROR: GOOGLE_REDIRECT_URI is missing from process.env! Defaulting to localhost (Auth will fail on Vercel).");
-}
-
-const FINAL_REDIRECT_URI = GOOGLE_REDIRECT_URI || 'http://localhost:5000/auth/google/callback';
-console.log("DEBUG: Using Redirect URI ->", FINAL_REDIRECT_URI);
-
-if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    console.warn("WARNING: Google Client ID or Secret is missing. Auth will fail.");
-}
-
-export const getOauth2Client = () => {
-    return new google.auth.OAuth2(
-        GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET,
-        FINAL_REDIRECT_URI
-    );
-};
-
 export const SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.send',
-    'https://www.googleapis.com/auth/userinfo.email'
+    'openid',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile'
 ];
+
+export const getOauth2Client = () => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+        throw new Error('Missing Google OAuth credentials (CLIENT_ID, SECRET, or REDIRECT_URI)');
+    }
+
+    return new google.auth.OAuth2(
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET,
+        GOOGLE_REDIRECT_URI
+    );
+};
 
 // Simple encryption for tokens in DB (ideally you'd use a dedicated secrets manager or a robust encryption strategy)
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex'); // 32 bytes for AES-256
