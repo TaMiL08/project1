@@ -1,8 +1,10 @@
 import { google } from 'googleapis';
-import dotenv from 'dotenv';
 import crypto from 'crypto';
 
-dotenv.config();
+// dotenv.config() is handled by Vercel in production
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config();
+}
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
