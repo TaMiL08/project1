@@ -13,13 +13,15 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
     try {
+        console.log('DEBUG: Fetching emails from Gmail...');
         const listResponse = await gmail.users.messages.list({
             userId: 'me',
-            q: 'is:unread in:inbox',
+            q: 'label:INBOX',
             maxResults: 10,
         });
 
         const messages = listResponse.data.messages || [];
+        console.log(`DEBUG: Found ${messages.length} messages in INBOX.`);
 
         for (const message of messages) {
             if (!message.id) continue;

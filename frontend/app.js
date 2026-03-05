@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function checkAuthStatus() {
     const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token) {
+        sessionStorage.setItem('gmail_access_token', token);
+    }
+
     if (urlParams.get('auth') === 'success') {
         const btn = document.getElementById('auth-btn');
         btn.innerHTML = `<i class="fas fa-check"></i> Connected`;
@@ -47,12 +52,18 @@ async function syncEmails() {
     btn.disabled = true;
 
     try {
-        // Assume access token is somehow available or the backend uses session.
-        // For this prototype, we'll send a dummy valid one so it doesn't fail on 400.
+        const token = sessionStorage.getItem('gmail_access_token');
+        if (!token) {
+            alert('Please connect your Gmail first.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+
         await fetch(`${API_BASE}/emails/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ access_token: 'dummy_token' })
+            body: JSON.stringify({ access_token: token })
         });
 
         // Wait a few seconds then refresh

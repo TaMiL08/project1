@@ -50,9 +50,9 @@ router.get('/google/callback', async (req, res) => {
             console.error('Could not start initial sync:', syncErr);
         }
 
-        // Redirect to frontend dashboard
+        // Redirect to frontend dashboard with token and email
         const frontendUrl = process.env.FRONTEND_URL || '/';
-        res.redirect(`${frontendUrl}?auth=success&email=${profile.email}`);
+        res.redirect(`${frontendUrl}?auth=success&email=${profile.email}&token=${tokens.access_token}`);
     } catch (error: any) {
         console.error('Error during Google callback:', error.message);
         res.status(500).send('Authentication failed');
