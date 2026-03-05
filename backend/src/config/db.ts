@@ -4,13 +4,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const dbHost = process.env.DB_HOST || 'localhost';
-const dbPort = process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432;
-const dbUser = process.env.DB_USER || 'postgres';
-const dbPassword = process.env.DB_PASSWORD || 'password';
-const dbName = process.env.DB_NAME || 'ai_email_assistant';
-
-const dbUrl = process.env.DATABASE_URL;
+// Priority: DATABASE_URL (Manual) > POSTGRES_URL (Vercel Integration) > POSTGRES_URL_NON_POOLING
+const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
+const dbHost = process.env.DB_HOST || process.env.POSTGRES_HOST || 'localhost';
+const dbPort = process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : (process.env.POSTGRES_PORT ? parseInt(process.env.POSTGRES_PORT, 10) : 5432);
+const dbUser = process.env.DB_USER || process.env.POSTGRES_USER || 'postgres';
+const dbPassword = process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'password';
+const dbName = process.env.DB_NAME || process.env.POSTGRES_DATABASE || 'ai_email_assistant';
 
 // If DATABASE_URL is provided (like in Supabase/Vercel), use it. Otherwise, fallback to local details.
 export const sequelize = dbUrl
