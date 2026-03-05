@@ -6,7 +6,13 @@ dotenv.config();
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+// Priority: Environmental Variable (Vercel) > Local Default
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/auth/google/callback';
+
+if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    console.warn("WARNING: Google Client ID or Secret is missing. Auth will fail.");
+}
 
 export const getOauth2Client = () => {
     return new google.auth.OAuth2(
