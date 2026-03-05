@@ -16,9 +16,9 @@ router.get('/', async (req, res) => {
         });
 
         res.json(emails);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching emails from DB:', error);
-        res.status(500).json({ error: 'Failed to fetch emails' });
+        res.status(500).json({ error: 'Failed to fetch emails', details: error.message });
     }
 });
 
