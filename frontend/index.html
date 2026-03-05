@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Email Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon"><i class="fas fa-robot"></i></div>
+            <span>Email AI</span>
+        </div>
+        <div class="nav-item active"><i class="fas fa-inbox"></i> Inbox</div>
+        <div class="nav-item"><i class="fas fa-check-circle"></i> Approved</div>
+        <div class="nav-item"><i class="fas fa-paper-plane"></i> Sent</div>
+        
+        <a href="http://localhost:5000/auth/google" class="auth-button" id="auth-btn">
+            <i class="fab fa-google"></i> Connect Gmail
+        </a>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <div class="header-title">Incoming Emails</div>
+            <button class="sync-btn" id="sync-btn" onclick="syncEmails()">
+                <i class="fas fa-sync-alt"></i> Sync Now
+            </button>
+        </header>
+
+        <div class="content-area">
+            <div class="email-list" id="email-list">
+                <!-- Emails will be rendered here dynamically -->
+                <div style="text-align:center; padding: 40px; color: var(--text-secondary);">
+                    <div class="loader" style="margin: 0 auto 16px;"></div>
+                    Loading emails...
+                </div>
+            </div>
+
+            <div class="email-detail" id="email-detail">
+                <div class="detail-placeholder">
+                    <i class="fas fa-envelope-open-text"></i>
+                    <h2>Select an email to view details</h2>
+                    <p>AI generated summaries and replies will appear here.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

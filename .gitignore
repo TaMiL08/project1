@@ -1,0 +1,10 @@
+node_modules
+.env
+dist
+.vscode
+.idea
+*.log
+frontend/api.php
+backend/node_modules
+.gemini
+frontend/api.php
