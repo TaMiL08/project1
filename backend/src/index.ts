@@ -15,41 +15,26 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Database readiness check
-let isDbInitialized = false;
-app.use(async (req, res, next) => {
-    if (!isDbInitialized && process.env.NODE_ENV === 'production') {
-        try {
-            const { initDB } = require('./initDb');
-            await initDB();
-            isDbInitialized = true;
-        } catch (err) {
-            console.error('Critical: DB Initialization failed:', err);
-            return res.status(500).json({ error: 'Database initialization failed', details: (err as any).message });
-        }
-    }
-    next();
-});
-
 // Routes
 import authRoutes from './routes/auth';
 import emailRoutes from './routes/emails';
+
 // Root route
 app.get('/', (req: Request, res: Response) => {
-    res.send('AI Personal Email Assistant API is running');
+    res.send('AI Personal Email Assistant API is running (In-Memory Mode)');
 });
 
 // API Routes
 app.use('/auth', authRoutes);
 app.use('/api/emails', emailRoutes);
 
-// Health check for debugging Vercel environment variables
+// Health check
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
+        mode: 'in-memory',
         env: {
             NODE_ENV: process.env.NODE_ENV,
-            HAS_DB_URL: !!process.env.DATABASE_URL,
             HAS_OPENAI_KEY: !!process.env.OPENAI_API_KEY,
             HAS_GOOGLE_ID: !!process.env.GOOGLE_CLIENT_ID,
             HAS_GOOGLE_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
@@ -58,24 +43,11 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Start server with DB init
-import { initDB } from './initDb';
-
-// For local testing
+// Start server
 if (process.env.NODE_ENV !== 'production') {
-    initDB().then(() => {
-        app.listen(port, () => {
-            console.log(`Server is running on port ${port}`);
-        });
-    }).catch((error) => {
-        console.error('Failed to initialize database and server', error);
+    app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
     });
-} else {
-    // For Vercel Serverless
-    // Vercel handles the port listening dynamically, we just export the app
-    // Note: In serverless, it's safer to initDB per-request or use a connection pool,
-    // but we can attempt to initialize it once globally here.
-    initDB().catch(console.error);
 }
 
 export default app;

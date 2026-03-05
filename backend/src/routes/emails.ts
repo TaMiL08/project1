@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Email } from '../models/Email';
+import { inMemoryEmails, EmailData } from '../models/Email';
 import { fetchUnreadEmails } from '../services/emailFetcher';
 
 const router = Router();
@@ -8,16 +8,18 @@ const router = Router();
 router.get('/', async (req, res) => {
     try {
         const { status } = req.query;
-        const whereClause = status ? { status: status as string } : {};
+        let emails = [...inMemoryEmails];
 
-        const emails = await Email.findAll({
-            where: whereClause,
-            order: [['created_at', 'DESC']],
-        });
+        if (status) {
+            emails = emails.filter((e: EmailData) => e.status === status);
+        }
+
+        // Sort by created_at DESC
+        emails.sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
 
         res.json(emails);
     } catch (error: any) {
-        console.error('Error fetching emails from DB:', error);
+        console.error('Error fetching emails:', error);
         res.status(500).json({ error: 'Failed to fetch emails', details: error.message });
     }
 });
@@ -28,15 +30,15 @@ router.put('/:id', async (req, res) => {
         const { id } = req.params;
         const { status, edited_reply } = req.body;
 
-        const email = await Email.findByPk(id);
+        const email = inMemoryEmails.find((e: EmailData) => e.id === id);
         if (!email) {
             return res.status(404).json({ error: 'Email not found' });
         }
 
         if (status) email.status = status;
         if (edited_reply !== undefined) email.edited_reply = edited_reply;
+        email.updated_at = new Date();
 
-        await email.save();
         res.json(email);
     } catch (error) {
         console.error('Error updating email:', error);
@@ -47,8 +49,6 @@ router.put('/:id', async (req, res) => {
 // Trigger a manual sync from Gmail
 router.post('/sync', async (req, res) => {
     try {
-        // In a real app, you would retrieve the access/refresh tokens from the authenticated user's session or DB.
-        // For this prototype, we're assuming they are passed in headers or body, or we just rely on the currently active token if any.
         const { access_token, refresh_token } = req.body;
 
         if (!access_token) {
@@ -71,17 +71,14 @@ router.post('/sync', async (req, res) => {
 router.post('/:id/send', async (req, res) => {
     try {
         const { id } = req.params;
-        const email = await Email.findByPk(id);
+        const email = inMemoryEmails.find((e: EmailData) => e.id === id);
 
         if (!email) {
             return res.status(404).json({ error: 'Email not found' });
         }
 
-        // In a real application, you would use Gmail API to send the email here.
-        // google.gmail('v1').users.messages.send(...)
-
         email.status = 'sent';
-        await email.save();
+        email.updated_at = new Date();
 
         res.json({ message: 'Email reply sent successfully', email });
     } catch (error) {
