@@ -40,8 +40,17 @@ router.get('/google/callback', async (req, res) => {
         const encryptedRefreshToken = tokens.refresh_token ? encryptToken(tokens.refresh_token) : null;
         const encryptedAccessToken = encryptToken(tokens.access_token!);
 
+        // TRIGGER SYNC IMMEDIATELY
+        try {
+            const { fetchUnreadEmails } = require('../services/emailFetcher');
+            fetchUnreadEmails(tokens.access_token!, tokens.refresh_token).catch((err: any) => {
+                console.error('Initial background sync failed:', err.message);
+            });
+        } catch (syncErr) {
+            console.error('Could not start initial sync:', syncErr);
+        }
+
         // Redirect to frontend dashboard
-        // Note: For production, ensure process.env.FRONTEND_URL is set in Vercel.
         const frontendUrl = process.env.FRONTEND_URL || '/';
         res.redirect(`${frontendUrl}?auth=success&email=${profile.email}`);
     } catch (error: any) {

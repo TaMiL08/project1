@@ -15,6 +15,22 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+// Database readiness check
+let isDbInitialized = false;
+app.use(async (req, res, next) => {
+    if (!isDbInitialized && process.env.NODE_ENV === 'production') {
+        try {
+            const { initDB } = require('./initDb');
+            await initDB();
+            isDbInitialized = true;
+        } catch (err) {
+            console.error('Critical: DB Initialization failed:', err);
+            return res.status(500).json({ error: 'Database initialization failed', details: (err as any).message });
+        }
+    }
+    next();
+});
+
 // Routes
 import authRoutes from './routes/auth';
 import emailRoutes from './routes/emails';

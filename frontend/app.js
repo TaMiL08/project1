@@ -23,7 +23,10 @@ function checkAuthStatus() {
 async function fetchEmails() {
     try {
         const res = await fetch(`${API_BASE}/emails`);
-        if (!res.ok) throw new Error('Failed to fetch emails');
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.details || errorData.error || 'Failed to fetch emails');
+        }
         emails = await res.json();
         renderEmailList();
     } catch (err) {
@@ -31,7 +34,8 @@ async function fetchEmails() {
         document.getElementById('email-list').innerHTML = `
             <div style="text-align:center; padding: 40px; color: var(--danger);">
                 <i class="fas fa-exclamation-triangle" style="font-size:24px;margin-bottom:12px;"></i><br>
-                Failed to load emails. Is backend running?
+                <strong>Error:</strong> ${escapeHtml(err.message)}<br>
+                <small style="display:block;margin-top:8px;color:rgba(255,255,255,0.6)">Is the database connected in Vercel settings?</small>
             </div>`;
     }
 }
