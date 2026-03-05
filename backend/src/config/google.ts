@@ -10,6 +10,8 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 // Priority: Environmental Variable (Vercel) > Local Default
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/auth/google/callback';
 
+console.log("DEBUG: Using Google Redirect URI:", GOOGLE_REDIRECT_URI);
+
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     console.warn("WARNING: Google Client ID or Secret is missing. Auth will fail.");
 }
