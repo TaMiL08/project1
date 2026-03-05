@@ -3,12 +3,17 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+const getOpenAIClient = () => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+        throw new Error('OPENAI_API_KEY is missing. Please set it in your environment variables.');
+    }
+    return new OpenAI({ apiKey });
+};
 
 export const processEmailWithAI = async (subject: string, bodyText: string) => {
     try {
+        const openai = getOpenAIClient();
         const prompt = `
       You are an AI email assistant. Summarize the following email in exactly 3 lines, identifying the key action required. Then, generate a professional suggested reply.
 
