@@ -27,7 +27,7 @@ router.get('/google/callback', async (req, res) => {
 
         // Redirect to frontend dashboard with some indicator of success
         // In production, use HttpOnly cookies for security.
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendUrl = process.env.FRONTEND_URL || '/';
         res.redirect(`${frontendUrl}?auth=success`);
     } catch (error) {
         console.error('Error during Google callback', error);
