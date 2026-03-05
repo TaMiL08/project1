@@ -16,6 +16,7 @@ const dbUrl = process.env.DATABASE_URL;
 export const sequelize = dbUrl
     ? new Sequelize(dbUrl, {
         dialect: 'postgres',
+        dialectModule: pg,
         logging: false,
         dialectOptions: {
             ssl: {
@@ -28,6 +29,7 @@ export const sequelize = dbUrl
         host: dbHost,
         port: dbPort,
         dialect: 'postgres',
+        dialectModule: pg,
         logging: false,
     });
 
