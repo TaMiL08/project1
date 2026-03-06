@@ -14,30 +14,25 @@ const getOpenAIClient = () => {
 export const processEmailWithAI = async (subject: string, bodyText: string) => {
     try {
         const openai = getOpenAIClient();
-
-        // Truncate body text to avoid token limits (keep it under 3000 chars)
-        const truncatedBody = bodyText.substring(0, 3000);
+        const truncatedBody = bodyText.substring(0, 2000);
 
         const response = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo-1106',
+            model: 'gpt-4o-mini',
             messages: [
                 {
                     role: 'system',
-                    content: 'You are a professional email assistant. You must always respond in valid JSON format with "summary" and "reply" fields.'
+                    content: 'You are a professional email assistant. Respond in JSON: {"summary": "2-sentence summary", "reply": "A helpful draft reply in the sender\'s style"}'
                 },
                 {
                     role: 'user',
-                    content: `Summarize this email in 2 sentences and write a brief professional reply.
-                    Subject: ${subject}
-                    Body: ${truncatedBody}`
+                    content: `Please read and draft a reply to this email:\nSubject: ${subject}\nBody: ${truncatedBody}`
                 }
             ],
             response_format: { type: 'json_object' },
-            max_tokens: 500,
+            max_tokens: 400,
         });
 
         const aiContent = response.choices[0].message.content;
-
         if (!aiContent) return null;
 
         const parsedResult = JSON.parse(aiContent);
@@ -46,8 +41,9 @@ export const processEmailWithAI = async (subject: string, bodyText: string) => {
             reply: parsedResult.reply || 'No reply suggested.',
         };
     } catch (error: any) {
-        console.error('OpenAI Error Details:', error.message);
-        return null;
+        console.error('AI Error:', error.message);
+        return null; // Fallback to "Pending" in DB
     }
 };
+
 

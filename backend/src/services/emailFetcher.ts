@@ -14,8 +14,9 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
         const listResponse = await gmail.users.messages.list({
             userId: 'me',
             q: 'label:INBOX',
-            maxResults: 3,
+            maxResults: 1,
         });
+
 
         const messages = listResponse.data.messages || [];
         stats.found = messages.length;
