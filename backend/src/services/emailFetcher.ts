@@ -49,26 +49,33 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
                 const sender = headers.find((h) => h.name === 'From')?.value || 'Unknown Sender';
 
                 let bodyText = '';
+
+                const cleanHtml = (html: string) => {
+                    return html
+                        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // Remove CSS blocks
+                        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove JS blocks
+                        .replace(/<[^>]*>?/gm, ' ') // Strip remaining tags
+                        .replace(/&nbsp;/g, ' ') // Clean up whitespace
+                        .replace(/\s+/g, ' ') // Collapse spaces
+                        .trim();
+                };
+
                 if (payload?.parts) {
                     const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
                     if (textPart && textPart.body && textPart.body.data) {
                         bodyText = Buffer.from(textPart.body.data, 'base64').toString('utf8');
                     } else {
-                        // If no text/plain, try text/html and strip tags
                         const htmlPart = payload.parts.find(p => p.mimeType === 'text/html');
                         if (htmlPart && htmlPart.body && htmlPart.body.data) {
                             const html = Buffer.from(htmlPart.body.data, 'base64').toString('utf8');
-                            bodyText = html.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+                            bodyText = cleanHtml(html);
                         }
                     }
                 } else if (payload?.body && payload.body.data) {
                     const content = Buffer.from(payload.body.data, 'base64').toString('utf8');
-                    if (payload.mimeType === 'text/html') {
-                        bodyText = content.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
-                    } else {
-                        bodyText = content;
-                    }
+                    bodyText = payload.mimeType === 'text/html' ? cleanHtml(content) : content;
                 }
+
 
 
                 const aiResult = await processEmailWithAI(subject, bodyText);
