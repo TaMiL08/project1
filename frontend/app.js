@@ -186,6 +186,8 @@ function selectEmail(id) {
     }
 
 
+    const isHtml = email.body.trim().toLowerCase().startsWith('<') || email.body.toLowerCase().includes('<html>') || email.body.toLowerCase().includes('<!doctype');
+
     detailEl.innerHTML = `
         <div class="detail-header">
             <div class="detail-subject">${escapeHtml(email.subject)}</div>
@@ -196,7 +198,14 @@ function selectEmail(id) {
         </div>
         
         <div style="margin-bottom: 12px; font-weight: 500; color: var(--text-secondary);">Original Message</div>
-        <div class="detail-body">${escapeHtml(email.body)}</div>
+        
+        ${isHtml ? `
+            <div class="detail-body-container">
+                <iframe class="email-iframe" srcdoc="${email.body.replace(/"/g, '&quot;')}" sandbox="allow-popups allow-popups-to-escape-sandbox" loading="lazy"></iframe>
+            </div>
+        ` : `
+            <div class="detail-body">${escapeHtml(email.body)}</div>
+        `}
 
         <div class="ai-section">
             <div class="ai-header"><i class="fas fa-magic"></i> AI Suggested Reply</div>
@@ -208,6 +217,7 @@ function selectEmail(id) {
         </div>
     `;
 }
+
 
 async function approveEmail(id) {
     const replyText = document.getElementById(`reply-text-${id}`).value;

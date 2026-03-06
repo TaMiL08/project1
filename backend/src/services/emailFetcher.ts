@@ -48,49 +48,50 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
                 const subject = headers.find((h) => h.name === 'Subject')?.value || 'No Subject';
                 const sender = headers.find((h) => h.name === 'From')?.value || 'Unknown Sender';
 
-                let bodyText = '';
+                let bodyTextForAI = '';
+                let originalBody = '';
 
                 const cleanHtml = (html: string) => {
                     return html
-                        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // Remove CSS blocks
-                        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove JS blocks
-                        .replace(/<[^>]*>?/gm, ' ') // Strip remaining tags
-                        .replace(/&nbsp;/g, ' ') // Clean up whitespace
-                        .replace(/\s+/g, ' ') // Collapse spaces
+                        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                        .replace(/<[^>]*>?/gm, ' ')
+                        .replace(/&nbsp;/g, ' ')
+                        .replace(/\s+/g, ' ')
                         .trim();
                 };
 
                 if (payload?.parts) {
                     const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
-                    if (textPart && textPart.body && textPart.body.data) {
-                        bodyText = Buffer.from(textPart.body.data, 'base64').toString('utf8');
-                    } else {
-                        const htmlPart = payload.parts.find(p => p.mimeType === 'text/html');
-                        if (htmlPart && htmlPart.body && htmlPart.body.data) {
-                            const html = Buffer.from(htmlPart.body.data, 'base64').toString('utf8');
-                            bodyText = cleanHtml(html);
-                        }
+                    const htmlPart = payload.parts.find(p => p.mimeType === 'text/html');
+
+                    if (htmlPart && htmlPart.body && htmlPart.body.data) {
+                        originalBody = Buffer.from(htmlPart.body.data, 'base64').toString('utf8');
+                        bodyTextForAI = cleanHtml(originalBody);
+                    } else if (textPart && textPart.body && textPart.body.data) {
+                        originalBody = Buffer.from(textPart.body.data, 'base64').toString('utf8');
+                        bodyTextForAI = originalBody;
                     }
                 } else if (payload?.body && payload.body.data) {
-                    const content = Buffer.from(payload.body.data, 'base64').toString('utf8');
-                    bodyText = payload.mimeType === 'text/html' ? cleanHtml(content) : content;
+                    originalBody = Buffer.from(payload.body.data, 'base64').toString('utf8');
+                    bodyTextForAI = payload.mimeType === 'text/html' ? cleanHtml(originalBody) : originalBody;
                 }
 
-
-
-                const aiResult = await processEmailWithAI(subject, bodyText);
+                // AI only gets clean text (saves tokens and improves accuracy)
+                const aiResult = await processEmailWithAI(subject, bodyTextForAI);
 
                 const newEmail = {
                     id: message.id,
                     sender,
                     subject,
-                    body: bodyText,
+                    body: originalBody, // Store original (potentially HTML) content
                     summary: aiResult?.summary || 'Summary pending...',
                     ai_reply: aiResult?.reply || 'Drafting reply...',
                     status: 'pending',
                     created_at: new Date(),
                     updated_at: new Date()
                 };
+
 
                 const { error: insertError } = await supabase.from('emails').insert([newEmail]);
 
