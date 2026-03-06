@@ -43,12 +43,11 @@ router.get('/google/callback', async (req, res) => {
         // TRIGGER SYNC IMMEDIATELY
         try {
             const { fetchUnreadEmails } = require('../services/emailFetcher');
-            fetchUnreadEmails(tokens.access_token!, tokens.refresh_token).catch((err: any) => {
-                console.error('Initial background sync failed:', err.message);
-            });
-        } catch (syncErr) {
-            console.error('Could not start initial sync:', syncErr);
+            await fetchUnreadEmails(tokens.access_token!, tokens.refresh_token);
+        } catch (syncErr: any) {
+            console.error('Initial sync failed:', syncErr.message);
         }
+
 
         // Redirect to frontend dashboard with token and email
         const frontendUrl = process.env.FRONTEND_URL || '/';

@@ -65,17 +65,21 @@ router.post('/sync', async (req, res) => {
             return res.status(400).json({ error: 'Access token is required to sync emails' });
         }
 
-        // This will process emails in the background
-        fetchUnreadEmails(access_token, refresh_token).catch(err => {
-            console.error('Background sync failed:', err);
-        });
+        // We MUST await this on Vercel, otherwise the function dies before sync finishes
+        try {
+            const stats = await fetchUnreadEmails(access_token, refresh_token);
+            res.json({ message: 'Sync completed', stats });
+        } catch (err: any) {
+            console.error('Sync failed:', err);
+            res.status(500).json({ error: 'Sync failed', details: err.message });
+        }
 
-        res.json({ message: 'Sync started' });
     } catch (error) {
         console.error('Error starting sync:', error);
         res.status(500).json({ error: 'Failed to start sync' });
     }
 });
+
 
 // Send email reply (mock)
 router.post('/:id/send', async (req, res) => {

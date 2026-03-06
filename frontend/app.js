@@ -60,27 +60,35 @@ async function syncEmails() {
             return;
         }
 
-        await fetch(`${API_BASE}/emails/sync`, {
+        const res = await fetch(`${API_BASE}/emails/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ access_token: token })
         });
 
-        // Wait a few seconds then refresh
-        setTimeout(() => {
+        const data = await res.json();
+
+        if (res.ok) {
+            const s = data.stats;
             fetchEmails();
-            btn.innerHTML = `<i class="fas fa-check"></i> Synced`;
+            btn.innerHTML = `<i class="fas fa-check"></i> Synced (${s.inserted} new)`;
+            console.log('Sync Stats:', s);
             setTimeout(() => {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
-            }, 2000);
-        }, 3000);
+            }, 3000);
+        } else {
+            throw new Error(data.details || data.error || 'Sync failed');
+        }
 
     } catch (err) {
+        console.error(err);
         btn.innerHTML = `<i class="fas fa-times"></i> Error`;
+        alert(`Sync Error: ${err.message}`);
         setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
     }
 }
+
 
 function renderEmailList() {
     const listEl = document.getElementById('email-list');

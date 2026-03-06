@@ -12,11 +12,13 @@ const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 
 export const SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',
     'https://www.googleapis.com/auth/gmail.send',
     'openid',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile'
 ];
+
 
 export const getOauth2Client = () => {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
