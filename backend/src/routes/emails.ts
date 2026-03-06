@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { inMemoryEmails, EmailData } from '../models/Email';
+import { supabase } from '../config/supabase';
 import { fetchUnreadEmails } from '../services/emailFetcher';
 
 const router = Router();
@@ -8,18 +8,23 @@ const router = Router();
 router.get('/', async (req, res) => {
     try {
         const { status } = req.query;
-        let emails = [...inMemoryEmails];
+
+        let query = supabase
+            .from('emails')
+            .select('*')
+            .order('created_at', { ascending: false });
 
         if (status) {
-            emails = emails.filter((e: EmailData) => e.status === status);
+            query = query.eq('status', status as string);
         }
 
-        // Sort by created_at DESC
-        emails.sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+        const { data: emails, error } = await query;
 
-        res.json(emails);
+        if (error) throw error;
+
+        res.json(emails || []);
     } catch (error: any) {
-        console.error('Error fetching emails:', error);
+        console.error('Error fetching emails from Supabase:', error);
         res.status(500).json({ error: 'Failed to fetch emails', details: error.message });
     }
 });
@@ -30,19 +35,24 @@ router.put('/:id', async (req, res) => {
         const { id } = req.params;
         const { status, edited_reply } = req.body;
 
-        const email = inMemoryEmails.find((e: EmailData) => e.id === id);
-        if (!email) {
-            return res.status(404).json({ error: 'Email not found' });
-        }
+        const updateData: any = { updated_at: new Date() };
+        if (status) updateData.status = status;
+        if (edited_reply !== undefined) updateData.edited_reply = edited_reply;
 
-        if (status) email.status = status;
-        if (edited_reply !== undefined) email.edited_reply = edited_reply;
-        email.updated_at = new Date();
+        const { data: email, error } = await supabase
+            .from('emails')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        if (!email) return res.status(404).json({ error: 'Email not found' });
 
         res.json(email);
-    } catch (error) {
-        console.error('Error updating email:', error);
-        res.status(500).json({ error: 'Failed to update email' });
+    } catch (error: any) {
+        console.error('Error updating email in Supabase:', error);
+        res.status(500).json({ error: 'Failed to update email', details: error.message });
     }
 });
 
@@ -71,20 +81,23 @@ router.post('/sync', async (req, res) => {
 router.post('/:id/send', async (req, res) => {
     try {
         const { id } = req.params;
-        const email = inMemoryEmails.find((e: EmailData) => e.id === id);
 
-        if (!email) {
-            return res.status(404).json({ error: 'Email not found' });
-        }
+        const { data: email, error } = await supabase
+            .from('emails')
+            .update({ status: 'sent', updated_at: new Date() })
+            .eq('id', id)
+            .select()
+            .single();
 
-        email.status = 'sent';
-        email.updated_at = new Date();
+        if (error) throw error;
+        if (!email) return res.status(404).json({ error: 'Email not found' });
 
         res.json({ message: 'Email reply sent successfully', email });
-    } catch (error) {
-        console.error('Error sending email:', error);
-        res.status(500).json({ error: 'Failed to send email' });
+    } catch (error: any) {
+        console.error('Error sending email (Supabase update):', error);
+        res.status(500).json({ error: 'Failed to send email', details: error.message });
     }
 });
 
 export default router;
+

@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { getOauth2Client } from '../config/google';
-import { inMemoryEmails, EmailData } from '../models/Email';
+import { supabase } from '../config/supabase';
 import { processEmailWithAI } from './aiProcessor';
 
 export const fetchUnreadEmails = async (accessToken: string, refreshToken?: string) => {
@@ -26,7 +26,13 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
         for (const message of messages) {
             if (!message.id) continue;
 
-            const existingEmail = inMemoryEmails.find((e: EmailData) => e.id === message.id);
+            // Check if email already exists in Supabase
+            const { data: existingEmail } = await supabase
+                .from('emails')
+                .select('id')
+                .eq('id', message.id)
+                .single();
+
             if (existingEmail) continue;
 
             const msgData = await gmail.users.messages.get({
@@ -53,8 +59,8 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
 
             const aiResult = await processEmailWithAI(subject, bodyText);
 
-            // Save to In-Memory storage
-            const newEmail: EmailData = {
+            // Save to Supabase
+            const newEmail = {
                 id: message.id,
                 sender,
                 subject,
@@ -67,8 +73,16 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
                 updated_at: new Date()
             };
 
-            inMemoryEmails.push(newEmail);
+            const { error: insertError } = await supabase
+                .from('emails')
+                .insert([newEmail]);
 
+            if (insertError) {
+                console.error(`Error inserting email ${message.id}:`, insertError.message);
+                continue;
+            }
+
+            // Mark as read or remove label
             await gmail.users.messages.modify({
                 userId: 'me',
                 id: message.id,
@@ -78,7 +92,7 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
             });
         }
 
-        console.log(`Processed ${messages.length} emails into memory.`);
+        console.log(`Processed ${messages.length} emails into Supabase.`);
     } catch (error) {
         console.error('Error fetching emails from Gmail', error);
     }

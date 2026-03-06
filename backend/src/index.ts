@@ -21,7 +21,7 @@ import emailRoutes from './routes/emails';
 
 // Root route
 app.get('/', (req: Request, res: Response) => {
-    res.send('AI Personal Email Assistant API is running (In-Memory Mode)');
+    res.send('AI Personal Email Assistant API is running (Supabase Mode)');
 });
 
 // API Routes
@@ -32,16 +32,17 @@ app.use('/api/emails', emailRoutes);
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
-        mode: 'in-memory',
+        mode: 'supabase',
         env: {
             NODE_ENV: process.env.NODE_ENV,
             HAS_OPENAI_KEY: !!process.env.OPENAI_API_KEY,
             HAS_GOOGLE_ID: !!process.env.GOOGLE_CLIENT_ID,
-            HAS_GOOGLE_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
-            HAS_GOOGLE_REDIRECT: !!process.env.GOOGLE_REDIRECT_URI,
+            HAS_SUPABASE_URL: !!process.env.SUPABASE_URL,
+            HAS_SUPABASE_KEY: !!process.env.SUPABASE_ANON_KEY,
         }
     });
 });
+
 
 // Start server
 if (process.env.NODE_ENV !== 'production') {
