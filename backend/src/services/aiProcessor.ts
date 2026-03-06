@@ -15,7 +15,7 @@ export const processEmailWithAI = async (subject: string, bodyText: string) => {
     try {
         const genAI = getGeminiClient();
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-1.5-flash-latest",
             generationConfig: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -53,7 +53,7 @@ export const processEmailWithAI = async (subject: string, bodyText: string) => {
 export const refineReplyWithAI = async (subject: string, bodyText: string, userInstruction: string) => {
     try {
         const genAI = getGeminiClient();
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         const truncatedBody = (bodyText || '').substring(0, 3000);
         const prompt = `Original Email Details:
@@ -64,7 +64,7 @@ export const refineReplyWithAI = async (subject: string, bodyText: string, userI
 
         Please provide ONLY the text of the reply draft. No intro/outro.`;
 
-        console.log('DEBUG Gemini Refine: Sending prompt to Gemini-1.5-Flash');
+        console.log('DEBUG Gemini Refine: Sending prompt to Gemini-1.5-Flash-Latest');
         const result = await model.generateContent(prompt);
         console.log('DEBUG Gemini Refine: Received response from Gemini');
         return result.response.text().trim();
