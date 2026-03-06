@@ -14,26 +14,26 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
         const listResponse = await gmail.users.messages.list({
             userId: 'me',
             q: 'label:INBOX',
-            maxResults: 1,
+            maxResults: 3,
         });
 
 
         const messages = listResponse.data.messages || [];
         stats.found = messages.length;
-        console.log(`DEBUG: Found ${messages.length} messages in INBOX.`);
 
         for (const message of messages) {
             if (!message.id) continue;
 
             const { data: existingEmail } = await supabase
                 .from('emails')
-                .select('id')
+                .select('id, status')
                 .eq('id', message.id)
                 .maybeSingle();
 
-            if (existingEmail) {
+            // If it exists and is already processed, skip.
+            // If it exists but is 'pending', we re-process it to fix blank content.
+            if (existingEmail && existingEmail.status !== 'pending') {
                 stats.skipped++;
-                console.log(`Email ${message.id} already exists in DB.`);
                 continue;
             }
 
@@ -63,65 +63,57 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
                         .trim();
                 };
 
-                const findParts = (parts: any[]) => {
-                    for (const part of parts) {
-                        // 1. Capture Text version for AI (if not already set)
-                        if (part.mimeType === 'text/plain' && part.body.data) {
-                            const text = Buffer.from(part.body.data, 'base64').toString('utf8');
-                            if (!bodyTextForAI) bodyTextForAI = text;
-                            if (!originalBody) originalBody = text;
-                        }
-
-                        // 2. Capture HTML version for Rendering (Always prefer this if found)
-                        if (part.mimeType === 'text/html' && part.body.data) {
-                            const html = Buffer.from(part.body.data, 'base64').toString('utf8');
-                            originalBody = html;
-                            bodyTextForAI = cleanHtml(html);
-                        }
-
-                        // 3. Keep looking for attachments
-                        if (part.body.attachmentId) {
-                            attachments.push({
-                                attachmentId: part.body.attachmentId,
-                                filename: part.filename || 'unnamed_file',
-                                mimeType: part.mimeType,
-                                size: part.body.size
-                            });
-                        }
-
-                        if (part.parts) findParts(part.parts);
+                const processPart = (part: any) => {
+                    if (part.mimeType === 'text/plain' && part.body.data) {
+                        const text = Buffer.from(part.body.data, 'base64').toString('utf8');
+                        if (!bodyTextForAI) bodyTextForAI = text;
+                        if (!originalBody) originalBody = text;
+                    } else if (part.mimeType === 'text/html' && part.body.data) {
+                        const html = Buffer.from(part.body.data, 'base64').toString('utf8');
+                        originalBody = html;
+                        bodyTextForAI = cleanHtml(html);
                     }
+
+                    if (part.filename && part.body.attachmentId) {
+                        attachments.push({
+                            attachmentId: part.body.attachmentId,
+                            filename: part.filename,
+                            mimeType: part.mimeType,
+                            size: part.body.size
+                        });
+                    }
+
+                    if (part.parts) part.parts.forEach(processPart);
                 };
 
-
-
-                if (payload?.parts) {
-                    findParts(payload.parts);
-                } else if (payload?.body && payload.body.data) {
-                    originalBody = Buffer.from(payload.body.data, 'base64').toString('utf8');
-                    bodyTextForAI = payload.mimeType === 'text/html' ? cleanHtml(originalBody) : originalBody;
+                // Check top level body
+                if (payload?.body?.data) {
+                    const data = Buffer.from(payload.body.data, 'base64').toString('utf8');
+                    originalBody = data;
+                    bodyTextForAI = (payload.mimeType === 'text/html') ? cleanHtml(data) : data;
                 }
+
+                // Check parts recursively
+                if (payload?.parts) payload.parts.forEach(processPart);
 
                 const aiResult = await processEmailWithAI(subject, bodyTextForAI);
 
-                const newEmail = {
+                const emailUpdate = {
                     id: message.id,
                     sender,
                     subject,
-                    body: originalBody || '(No content)',
+                    body: originalBody || '(No content found)',
                     summary: aiResult?.summary || 'Summary pending...',
                     ai_reply: aiResult?.reply || 'Drafting reply...',
                     status: 'pending',
                     attachments: attachments.length > 0 ? attachments : null,
-                    created_at: new Date(),
                     updated_at: new Date()
                 };
 
-                const { error: insertError } = await supabase.from('emails').insert([newEmail]);
+                const { error: upsertError } = await supabase.from('emails').upsert([emailUpdate]);
 
-
-                if (insertError) {
-                    console.error('Supabase Insert Error:', insertError.message);
+                if (upsertError) {
+                    console.error('Supabase Upsert Error:', upsertError.message);
                     stats.errors++;
                 } else {
                     stats.inserted++;
@@ -143,4 +135,3 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
         throw error;
     }
 };
-
