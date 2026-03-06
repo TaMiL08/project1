@@ -1,12 +1,26 @@
 const API_BASE = '/api';
 let emails = [];
 let selectedEmailId = null;
+let activeTab = 'Inbox';
 
 // On load
 document.addEventListener('DOMContentLoaded', () => {
     checkAuthStatus();
     fetchEmails();
+    initTabs();
 });
+
+function initTabs() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            item.classList.add('active');
+            activeTab = item.innerText.trim();
+            renderEmailList();
+        });
+    });
+}
+
 
 function checkAuthStatus() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -93,17 +107,27 @@ async function syncEmails() {
 function renderEmailList() {
     const listEl = document.getElementById('email-list');
 
-    if (emails.length === 0) {
+    // Filtering logic based on active tab
+    let filteredEmails = [];
+    if (activeTab === 'Inbox') {
+        filteredEmails = emails.filter(e => e.status === 'pending' || e.status === 'approved');
+    } else if (activeTab === 'Approved') {
+        filteredEmails = emails.filter(e => e.status === 'approved');
+    } else if (activeTab === 'Sent') {
+        filteredEmails = emails.filter(e => e.status === 'sent');
+    }
+
+    if (filteredEmails.length === 0) {
         listEl.innerHTML = `
             <div style="text-align:center; padding: 40px; color: var(--text-secondary);">
                 <i class="fas fa-inbox" style="font-size:32px;margin-bottom:16px;"></i><br>
-                Your inbox is empty.<br>Click Sync Now to fetch new emails.
+                Your ${activeTab.toLowerCase()} is empty.
             </div>`;
         return;
     }
 
     listEl.innerHTML = '';
-    emails.forEach((email, index) => {
+    filteredEmails.forEach((email, index) => {
         const div = document.createElement('div');
         div.className = `email-item ${email.id === selectedEmailId ? 'selected' : ''}`;
         div.style.animationDelay = `${index * 0.05}s`;
@@ -119,11 +143,12 @@ function renderEmailList() {
                 <span class="email-status ${statusClass}">${email.status.toUpperCase()}</span>
             </div>
             <div class="email-subject">${escapeHtml(email.subject)}</div>
-            <div class="email-summary">${escapeHtml(email.summary || 'Fetching summary...')}</div>
+            <div class="email-summary">${escapeHtml(email.summary || 'Summary pending...')}</div>
         `;
         listEl.appendChild(div);
     });
 }
+
 
 function selectEmail(id) {
     selectedEmailId = id;
@@ -138,16 +163,28 @@ function selectEmail(id) {
     if (email.status === 'pending') {
         actionsHtml = `
             <button class="btn btn-success" onclick="approveEmail('${email.id}')"><i class="fas fa-check"></i> Approve & Save</button>
+            <button class="btn btn-outline" onclick="dismissEmail('${email.id}')" style="margin-left:8px; border-color:var(--text-secondary); color:var(--text-secondary);">
+                <i class="fas fa-trash-alt"></i> Ignore
+            </button>
          `;
     } else if (email.status === 'approved') {
         actionsHtml = `
             <button class="btn btn-primary" onclick="sendEmail('${email.id}')"><i class="fas fa-paper-plane"></i> Send Reply</button>
+            <button class="btn btn-outline" onclick="dismissEmail('${email.id}')" style="margin-left:8px; border-color:var(--text-secondary); color:var(--text-secondary);">
+                <i class="fas fa-trash-alt"></i> Ignore
+            </button>
+         `;
+    } else if (email.status === 'ignored') {
+        actionsHtml = `
+            <span style="color:var(--text-secondary);"><i class="fas fa-eye-slash"></i> This email was ignored.</span>
+            <button class="btn btn-outline" onclick="approveEmail('${email.id}')" style="margin-left:12px; font-size:12px; padding:4px 8px;">Restore</button>
          `;
     } else {
         actionsHtml = `
             <span style="color:var(--accent);"><i class="fas fa-check-circle"></i> Reply Sent successfully</span>
          `;
     }
+
 
     detailEl.innerHTML = `
         <div class="detail-header">
@@ -225,6 +262,35 @@ async function sendEmail(id) {
 }
 
 
+async function dismissEmail(id) {
+    try {
+        const res = await fetch(`${API_BASE}/emails/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'ignored' })
+        });
+        if (res.ok) {
+            const updated = await res.json();
+            const idx = emails.findIndex(e => e.id === id);
+            if (idx > -1) emails[idx] = updated;
+
+            // Clear details if current selected is being ignored
+            if (selectedEmailId === id) {
+                selectedEmailId = null;
+                document.getElementById('email-detail').innerHTML = `
+                    <div style="text-align:center; padding: 40px; color: var(--text-secondary);">
+                        <i class="fas fa-eye-slash" style="font-size:32px;margin-bottom:16px;"></i><br>
+                        Email ignored.
+                    </div>`;
+            }
+            renderEmailList();
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Failed to dismiss email');
+    }
+}
+
 function escapeHtml(unsafe) {
     return (unsafe || '').toString()
         .replace(/&/g, "&amp;")
@@ -233,3 +299,4 @@ function escapeHtml(unsafe) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
