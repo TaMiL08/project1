@@ -276,8 +276,9 @@ async function refineWithAI(id) {
             // Focus textarea
             document.getElementById(`reply-text-${id}`).focus();
         } else {
-            const err = await res.json();
-            throw new Error(err.error || 'Refinement failed');
+            const errBody = await res.json().catch(() => ({}));
+            const errMsg = errBody.details ? `${errBody.error}: ${errBody.details}` : (errBody.error || 'Refinement failed');
+            throw new Error(errMsg);
         }
     } catch (err) {
         console.error(err);

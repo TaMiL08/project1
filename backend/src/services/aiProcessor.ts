@@ -64,7 +64,9 @@ export const refineReplyWithAI = async (subject: string, bodyText: string, userI
 
         Please provide ONLY the text of the reply draft. No intro/outro.`;
 
+        console.log('DEBUG Gemini Refine: Sending prompt to Gemini-1.5-Flash');
         const result = await model.generateContent(prompt);
+        console.log('DEBUG Gemini Refine: Received response from Gemini');
         return result.response.text().trim();
     } catch (error: any) {
         console.error('Gemini refine error:', error.message);
