@@ -81,27 +81,73 @@ router.post('/sync', async (req, res) => {
 });
 
 
-// Send email reply (mock)
+import { google } from 'googleapis';
+import { getOauth2Client } from '../config/google';
+
+// Send email reply (Actual Gmail API)
 router.post('/:id/send', async (req, res) => {
     try {
         const { id } = req.params;
+        const { access_token } = req.body;
 
-        const { data: email, error } = await supabase
+        if (!access_token) {
+            return res.status(401).json({ error: 'Auth token missing' });
+        }
+
+        // 1. Get email data from Supabase
+        const { data: email, error: dbError } = await supabase
+            .from('emails')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (dbError || !email) return res.status(404).json({ error: 'Email not found' });
+
+        const replyBody = email.edited_reply || email.ai_reply;
+        if (!replyBody) return res.status(400).json({ error: 'No reply template found' });
+
+        // 2. Clear credentials and set for this user
+        const oauth2Client = getOauth2Client();
+        oauth2Client.setCredentials({ access_token });
+        const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+        // 3. Construct the email (Base64 URL Safe)
+        const str = [
+            `To: ${email.sender}`,
+            `Subject: Re: ${email.subject}`,
+            'Content-Type: text/plain; charset=utf-8',
+            'MIME-Version: 1.0',
+            '',
+            replyBody
+        ].join('\n');
+
+        const encodedMail = Buffer.from(str)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+
+        // 4. Send via Gmail
+        await gmail.users.messages.send({
+            userId: 'me',
+            requestBody: { raw: encodedMail, threadId: email.id }
+        });
+
+        // 5. Update Status in DB
+        const { data: updatedEmail } = await supabase
             .from('emails')
             .update({ status: 'sent', updated_at: new Date() })
             .eq('id', id)
             .select()
             .single();
 
-        if (error) throw error;
-        if (!email) return res.status(404).json({ error: 'Email not found' });
-
-        res.json({ message: 'Email reply sent successfully', email });
+        res.json({ message: 'Email sent successfully!', email: updatedEmail });
     } catch (error: any) {
-        console.error('Error sending email (Supabase update):', error);
-        res.status(500).json({ error: 'Failed to send email', details: error.message });
+        console.error('Email Send Error:', error.message);
+        res.status(500).json({ error: 'Gmail Send Failed', details: error.message });
     }
 });
+
 
 export default router;
 

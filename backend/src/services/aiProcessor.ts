@@ -14,40 +14,40 @@ const getOpenAIClient = () => {
 export const processEmailWithAI = async (subject: string, bodyText: string) => {
     try {
         const openai = getOpenAIClient();
-        const prompt = `
-      You are an AI email assistant. Summarize the following email in exactly 3 lines, identifying the key action required. Then, generate a professional suggested reply.
 
-      Input:
-      Email subject: ${subject}
-      Email body: ${bodyText}
-
-      Return your output strictly as a JSON object with two fields: "summary" and "reply".
-    `;
+        // Truncate body text to avoid token limits (keep it under 3000 chars)
+        const truncatedBody = bodyText.substring(0, 3000);
 
         const response = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo', // or gpt-4 depending on the API key and preference
+            model: 'gpt-3.5-turbo-1106',
             messages: [
-                { role: 'system', content: 'You are a helpful AI assistant that processes emails.' },
-                { role: 'user', content: prompt }
+                {
+                    role: 'system',
+                    content: 'You are a professional email assistant. You must always respond in valid JSON format with "summary" and "reply" fields.'
+                },
+                {
+                    role: 'user',
+                    content: `Summarize this email in 2 sentences and write a brief professional reply.
+                    Subject: ${subject}
+                    Body: ${truncatedBody}`
+                }
             ],
             response_format: { type: 'json_object' },
             max_tokens: 500,
-            temperature: 0.7,
         });
 
         const aiContent = response.choices[0].message.content;
 
-        if (!aiContent) {
-            throw new Error('No content returned from OpenAI API.');
-        }
+        if (!aiContent) return null;
 
         const parsedResult = JSON.parse(aiContent);
         return {
-            summary: parsedResult.summary,
-            reply: parsedResult.reply,
+            summary: parsedResult.summary || 'Summary generated.',
+            reply: parsedResult.reply || 'No reply suggested.',
         };
-    } catch (error) {
-        console.error('Error processing email with OpenAI', error);
+    } catch (error: any) {
+        console.error('OpenAI Error Details:', error.message);
         return null;
     }
 };
+

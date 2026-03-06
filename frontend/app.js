@@ -193,19 +193,37 @@ async function approveEmail(id) {
 }
 
 async function sendEmail(id) {
+    const btn = event?.target || document.querySelector(`button[onclick*="${id}"]`);
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<div class="loader" style="width:14px;height:14px;border-width:2px;display:inline-block;"></div> Sending...`;
+    btn.disabled = true;
+
     try {
-        const res = await fetch(`${API_BASE}/emails/${id}/send`, { method: 'POST' });
+        const token = sessionStorage.getItem('gmail_access_token');
+        const res = await fetch(`${API_BASE}/emails/${id}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: token })
+        });
+
         if (res.ok) {
             const data = await res.json();
             const idx = emails.findIndex(e => e.id === id);
             if (idx > -1) emails[idx] = data.email;
-            selectEmail(id); // re-render
+            selectEmail(id);
+            alert('Reply sent successfully!');
+        } else {
+            const err = await res.json();
+            throw new Error(err.details || err.error || 'Failed to send');
         }
     } catch (err) {
         console.error(err);
-        alert('Failed to send');
+        alert(`Failed to send: ${err.message}`);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 }
+
 
 function escapeHtml(unsafe) {
     return (unsafe || '').toString()
