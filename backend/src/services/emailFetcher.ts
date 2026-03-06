@@ -65,19 +65,23 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
 
                 const findParts = (parts: any[]) => {
                     for (const part of parts) {
+                        // Priority: 1. Keep first text/plain, 2. Prefer text/html as primary originalBody
                         if (part.mimeType === 'text/plain' && part.body.data && !originalBody) {
                             originalBody = Buffer.from(part.body.data, 'base64').toString('utf8');
                             bodyTextForAI = originalBody;
                         } else if (part.mimeType === 'text/html' && part.body.data) {
                             const html = Buffer.from(part.body.data, 'base64').toString('utf8');
-                            originalBody = html;
+                            originalBody = html; // HTML is better for rendering
                             bodyTextForAI = cleanHtml(html);
                         }
 
-                        if (part.filename && part.body.attachmentId) {
+                        // Capture attachments
+                        if (part.body.attachmentId) {
+                            const fileName = part.filename || 'unnamed_file';
+                            console.log(`DEBUG: Found attachment: ${fileName} (${part.mimeType})`);
                             attachments.push({
                                 attachmentId: part.body.attachmentId,
-                                filename: part.filename,
+                                filename: fileName,
                                 mimeType: part.mimeType,
                                 size: part.body.size
                             });
@@ -86,6 +90,7 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
                         if (part.parts) findParts(part.parts);
                     }
                 };
+
 
                 if (payload?.parts) {
                     findParts(payload.parts);
