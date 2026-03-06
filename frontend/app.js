@@ -186,7 +186,8 @@ function selectEmail(id) {
     }
 
 
-    const isHtml = email.body.trim().toLowerCase().startsWith('<') || email.body.toLowerCase().includes('<html>') || email.body.toLowerCase().includes('<!doctype');
+    const isHtml = /<html|<!doctype|<body|<table/i.test(email.body);
+
 
     detailEl.innerHTML = `
         <div class="detail-header">

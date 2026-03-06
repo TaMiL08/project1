@@ -65,23 +65,25 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
 
                 const findParts = (parts: any[]) => {
                     for (const part of parts) {
-                        // Priority: 1. Keep first text/plain, 2. Prefer text/html as primary originalBody
-                        if (part.mimeType === 'text/plain' && part.body.data && !originalBody) {
-                            originalBody = Buffer.from(part.body.data, 'base64').toString('utf8');
-                            bodyTextForAI = originalBody;
-                        } else if (part.mimeType === 'text/html' && part.body.data) {
+                        // 1. Capture Text version for AI (if not already set)
+                        if (part.mimeType === 'text/plain' && part.body.data) {
+                            const text = Buffer.from(part.body.data, 'base64').toString('utf8');
+                            if (!bodyTextForAI) bodyTextForAI = text;
+                            if (!originalBody) originalBody = text;
+                        }
+
+                        // 2. Capture HTML version for Rendering (Always prefer this if found)
+                        if (part.mimeType === 'text/html' && part.body.data) {
                             const html = Buffer.from(part.body.data, 'base64').toString('utf8');
-                            originalBody = html; // HTML is better for rendering
+                            originalBody = html;
                             bodyTextForAI = cleanHtml(html);
                         }
 
-                        // Capture attachments
+                        // 3. Keep looking for attachments
                         if (part.body.attachmentId) {
-                            const fileName = part.filename || 'unnamed_file';
-                            console.log(`DEBUG: Found attachment: ${fileName} (${part.mimeType})`);
                             attachments.push({
                                 attachmentId: part.body.attachmentId,
-                                filename: fileName,
+                                filename: part.filename || 'unnamed_file',
                                 mimeType: part.mimeType,
                                 size: part.body.size
                             });
@@ -90,6 +92,7 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
                         if (part.parts) findParts(part.parts);
                     }
                 };
+
 
 
                 if (payload?.parts) {
