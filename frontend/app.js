@@ -207,7 +207,24 @@ function selectEmail(id) {
             <div class="detail-body">${escapeHtml(email.body)}</div>
         `}
 
+        ${email.attachments && email.attachments.length > 0 ? `
+            <div class="attachments-section">
+                <div class="attachments-header"><i class="fas fa-paperclip"></i> Attachments</div>
+                <div class="attachment-list">
+                    ${email.attachments.map(att => `
+                        <a href="${API_BASE}/emails/${email.id}/attachments/${att.attachmentId}?access_token=${sessionStorage.getItem('gmail_access_token')}" 
+                           class="attachment-item" target="_blank">
+                            <i class="fas fa-file-alt"></i>
+                            <span class="attachment-name" title="${att.filename}">${escapeHtml(att.filename)}</span>
+                            <span class="attachment-size">${(att.size / 1024).toFixed(1)} KB</span>
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+
         <div class="ai-section">
+
             <div class="ai-header"><i class="fas fa-magic"></i> AI Suggested Reply</div>
             <textarea id="reply-text-${email.id}" class="reply-editor" ${email.status === 'sent' ? 'readonly' : ''}>${email.edited_reply || email.ai_reply || ''}</textarea>
             

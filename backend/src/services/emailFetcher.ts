@@ -51,6 +51,7 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
 
                 let bodyTextForAI = '';
                 let originalBody = '';
+                const attachments: any[] = [];
 
                 const cleanHtml = (html: string) => {
                     return html
@@ -62,39 +63,54 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
                         .trim();
                 };
 
-                if (payload?.parts) {
-                    const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
-                    const htmlPart = payload.parts.find(p => p.mimeType === 'text/html');
+                const findParts = (parts: any[]) => {
+                    for (const part of parts) {
+                        if (part.mimeType === 'text/plain' && part.body.data && !originalBody) {
+                            originalBody = Buffer.from(part.body.data, 'base64').toString('utf8');
+                            bodyTextForAI = originalBody;
+                        } else if (part.mimeType === 'text/html' && part.body.data) {
+                            const html = Buffer.from(part.body.data, 'base64').toString('utf8');
+                            originalBody = html;
+                            bodyTextForAI = cleanHtml(html);
+                        }
 
-                    if (htmlPart && htmlPart.body && htmlPart.body.data) {
-                        originalBody = Buffer.from(htmlPart.body.data, 'base64').toString('utf8');
-                        bodyTextForAI = cleanHtml(originalBody);
-                    } else if (textPart && textPart.body && textPart.body.data) {
-                        originalBody = Buffer.from(textPart.body.data, 'base64').toString('utf8');
-                        bodyTextForAI = originalBody;
+                        if (part.filename && part.body.attachmentId) {
+                            attachments.push({
+                                attachmentId: part.body.attachmentId,
+                                filename: part.filename,
+                                mimeType: part.mimeType,
+                                size: part.body.size
+                            });
+                        }
+
+                        if (part.parts) findParts(part.parts);
                     }
+                };
+
+                if (payload?.parts) {
+                    findParts(payload.parts);
                 } else if (payload?.body && payload.body.data) {
                     originalBody = Buffer.from(payload.body.data, 'base64').toString('utf8');
                     bodyTextForAI = payload.mimeType === 'text/html' ? cleanHtml(originalBody) : originalBody;
                 }
 
-                // AI only gets clean text (saves tokens and improves accuracy)
                 const aiResult = await processEmailWithAI(subject, bodyTextForAI);
 
                 const newEmail = {
                     id: message.id,
                     sender,
                     subject,
-                    body: originalBody, // Store original (potentially HTML) content
+                    body: originalBody || '(No content)',
                     summary: aiResult?.summary || 'Summary pending...',
                     ai_reply: aiResult?.reply || 'Drafting reply...',
                     status: 'pending',
+                    attachments: attachments.length > 0 ? attachments : null,
                     created_at: new Date(),
                     updated_at: new Date()
                 };
 
-
                 const { error: insertError } = await supabase.from('emails').insert([newEmail]);
+
 
                 if (insertError) {
                     console.error('Supabase Insert Error:', insertError.message);

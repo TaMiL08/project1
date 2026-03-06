@@ -1,3 +1,10 @@
+export interface AttachmentData {
+    attachmentId: string;
+    filename: string;
+    mimeType: string;
+    size: number;
+}
+
 export interface EmailData {
     id: string;
     sender: string;
@@ -6,10 +13,12 @@ export interface EmailData {
     summary: string | null;
     ai_reply: string | null;
     edited_reply: string | null;
-    status: 'pending' | 'approved' | 'sent';
+    status: 'pending' | 'approved' | 'sent' | 'ignored';
+    attachments?: AttachmentData[];
     created_at: Date;
     updated_at: Date;
 }
+
 
 // Global in-memory storage
 export const inMemoryEmails: EmailData[] = [];

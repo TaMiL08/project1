@@ -148,6 +148,45 @@ router.post('/:id/send', async (req, res) => {
     }
 });
 
+// Download Attachment
+router.get('/:id/attachments/:attachmentId', async (req, res) => {
+    try {
+        const { id, attachmentId } = req.params;
+        const accessToken = req.query.access_token as string;
+
+        if (!accessToken) return res.status(401).send('Unauthorized');
+
+        const oauth2Client = getOauth2Client();
+        oauth2Client.setCredentials({ access_token: accessToken });
+        const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+        const attachment = await gmail.users.messages.attachments.get({
+            userId: 'me',
+            messageId: id,
+            id: attachmentId
+        });
+
+        const data = attachment.data.data;
+        if (!data) return res.status(404).send('Attachment data not found');
+
+        // Convert base64url to Buffer
+        const buffer = Buffer.from(data, 'base64');
+
+        // We need the filename for headers. Let's get it from DB.
+        const { data: email } = await supabase.from('emails').select('attachments').eq('id', id).single();
+        const meta = email?.attachments?.find((a: any) => a.attachmentId === attachmentId);
+
+        res.setHeader('Content-Disposition', `attachment; filename="${meta?.filename || 'download'}"`);
+        res.setHeader('Content-Type', meta?.mimeType || 'application/octet-stream');
+        res.send(buffer);
+
+    } catch (err: any) {
+        console.error('Download Error:', err);
+        res.status(500).send('Failed to download');
+    }
+});
+
+
 
 export default router;
 
