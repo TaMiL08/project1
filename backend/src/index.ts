@@ -35,7 +35,7 @@ app.get('/api/health', (req, res) => {
         mode: 'supabase',
         env: {
             NODE_ENV: process.env.NODE_ENV,
-            HAS_OPENAI_KEY: !!process.env.OPENAI_API_KEY,
+            HAS_GEMINI_KEY: !!(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY),
             HAS_GOOGLE_ID: !!process.env.GOOGLE_CLIENT_ID,
             HAS_GOOGLE_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
             HAS_GOOGLE_CALLBACK: !!(process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_CALLBACK_URL),

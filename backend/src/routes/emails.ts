@@ -210,10 +210,15 @@ router.post('/:id/refine', async (req, res) => {
         if (dbError || !email) return res.status(404).json({ error: 'Email not found' });
 
         // 2. Call AI to refine
-        const refinedText = await refineReplyWithAI(email.subject, email.body, instruction);
-
-        if (!refinedText) {
-            return res.status(500).json({ error: 'AI failed to refine the reply' });
+        let refinedText;
+        try {
+            refinedText = await refineReplyWithAI(email.subject, email.body, instruction);
+            if (!refinedText) {
+                return res.status(500).json({ error: 'AI returned empty response' });
+            }
+        } catch (aiErr: any) {
+            console.error('AI Error during refinement:', aiErr.message);
+            return res.status(500).json({ error: 'AI logic failed', details: aiErr.message });
         }
 
         // 3. Update the email in DB (and set status to approved if it was pending, or just stick to pending)
