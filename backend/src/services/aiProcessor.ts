@@ -46,4 +46,31 @@ export const processEmailWithAI = async (subject: string, bodyText: string) => {
     }
 };
 
+export const refineReplyWithAI = async (subject: string, bodyText: string, userInstruction: string) => {
+    try {
+        const openai = getOpenAIClient();
+        const truncatedBody = bodyText.substring(0, 2000);
+
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                {
+                    role: 'system',
+                    content: 'You are a professional email assistant. Your job is to rewrite or draft an email reply based on the user\'s specific instructions while maintaining a professional and helpful tone.'
+                },
+                {
+                    role: 'user',
+                    content: `Original Email Details:\nSubject: ${subject}\nBody: ${truncatedBody}\n\nUser's specific instruction for the reply: "${userInstruction}"\n\nPlease provide ONLY the text of the reply draft.`
+                }
+            ],
+            max_tokens: 500,
+        });
+
+        return response.choices[0].message.content?.trim() || null;
+    } catch (error: any) {
+        console.error('AI Refine Error:', error.message);
+        return null;
+    }
+};
+
 

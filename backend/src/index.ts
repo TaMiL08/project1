@@ -37,6 +37,9 @@ app.get('/api/health', (req, res) => {
             NODE_ENV: process.env.NODE_ENV,
             HAS_OPENAI_KEY: !!process.env.OPENAI_API_KEY,
             HAS_GOOGLE_ID: !!process.env.GOOGLE_CLIENT_ID,
+            HAS_GOOGLE_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
+            HAS_GOOGLE_CALLBACK: !!(process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_CALLBACK_URL),
+            HAS_ENCRYPTION_KEY: !!process.env.ENCRYPTION_KEY,
             HAS_SUPABASE_URL: !!process.env.SUPABASE_URL,
             HAS_SUPABASE_KEY: !!process.env.SUPABASE_ANON_KEY,
         }

@@ -188,5 +188,54 @@ router.get('/:id/attachments/:attachmentId', async (req, res) => {
 
 
 
+import { refineReplyWithAI } from '../services/aiProcessor';
+
+// Refine reply with AI based on user instructions
+router.post('/:id/refine', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { instruction } = req.body;
+
+        if (!instruction) {
+            return res.status(400).json({ error: 'Instruction is required for refinement' });
+        }
+
+        // 1. Get original email data
+        const { data: email, error: dbError } = await supabase
+            .from('emails')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (dbError || !email) return res.status(404).json({ error: 'Email not found' });
+
+        // 2. Call AI to refine
+        const refinedText = await refineReplyWithAI(email.subject, email.body, instruction);
+
+        if (!refinedText) {
+            return res.status(500).json({ error: 'AI failed to refine the reply' });
+        }
+
+        // 3. Update the email in DB (and set status to approved if it was pending, or just stick to pending)
+        const { data: updatedEmail, error: updateError } = await supabase
+            .from('emails')
+            .update({
+                ai_reply: refinedText,
+                edited_reply: refinedText, // sync both for simplicity
+                updated_at: new Date()
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (updateError) throw updateError;
+
+        res.json(updatedEmail);
+    } catch (error: any) {
+        console.error('AI Refine Route Error:', error.message);
+        res.status(500).json({ error: 'Refinement failed', details: error.message });
+    }
+});
+
 export default router;
 

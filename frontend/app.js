@@ -225,8 +225,18 @@ function selectEmail(id) {
         ` : ''}
 
         <div class="ai-section">
-
             <div class="ai-header"><i class="fas fa-magic"></i> AI Suggested Reply</div>
+            
+            ${email.status === 'sent' ? '' : `
+                <div class="instruction-box">
+                    <label class="instruction-label">Tell AI what to say (e.g., "tell them I am busy until Tuesday" or "make it more formal"):</label>
+                    <input type="text" id="ai-instruction-${email.id}" class="instruction-input" placeholder="Enter instructions for AI...">
+                    <button class="btn btn-outline btn-sm" onclick="refineWithAI('${email.id}')">
+                        <i class="fas fa-wand-sparkles"></i> Refine with AI
+                    </button>
+                </div>
+            `}
+
             <textarea id="reply-text-${email.id}" class="reply-editor" ${email.status === 'sent' ? 'readonly' : ''}>${email.edited_reply || email.ai_reply || ''}</textarea>
             
             <div class="actions">
@@ -234,6 +244,48 @@ function selectEmail(id) {
             </div>
         </div>
     `;
+}
+
+async function refineWithAI(id) {
+    const instructionInput = document.getElementById(`ai-instruction-${id}`);
+    const instruction = instructionInput.value.trim();
+    if (!instruction) {
+        alert('Please enter some instructions for the AI.');
+        return;
+    }
+
+    const btn = event.currentTarget;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = `<div class="loader" style="width:12px;height:12px;border-width:2px;display:inline-block;"></div> Thinking...`;
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_BASE}/emails/${id}/refine`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ instruction })
+        });
+
+        if (res.ok) {
+            const updated = await res.json();
+            const idx = emails.findIndex(e => e.id === id);
+            if (idx > -1) emails[idx] = updated;
+
+            // Re-render
+            selectEmail(id);
+            // Focus textarea
+            document.getElementById(`reply-text-${id}`).focus();
+        } else {
+            const err = await res.json();
+            throw new Error(err.error || 'Refinement failed');
+        }
+    } catch (err) {
+        console.error(err);
+        alert(`AI Error: ${err.message}`);
+    } finally {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+    }
 }
 
 
