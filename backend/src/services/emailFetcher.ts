@@ -53,10 +53,23 @@ export const fetchUnreadEmails = async (accessToken: string, refreshToken?: stri
                     const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
                     if (textPart && textPart.body && textPart.body.data) {
                         bodyText = Buffer.from(textPart.body.data, 'base64').toString('utf8');
+                    } else {
+                        // If no text/plain, try text/html and strip tags
+                        const htmlPart = payload.parts.find(p => p.mimeType === 'text/html');
+                        if (htmlPart && htmlPart.body && htmlPart.body.data) {
+                            const html = Buffer.from(htmlPart.body.data, 'base64').toString('utf8');
+                            bodyText = html.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+                        }
                     }
                 } else if (payload?.body && payload.body.data) {
-                    bodyText = Buffer.from(payload.body.data, 'base64').toString('utf8');
+                    const content = Buffer.from(payload.body.data, 'base64').toString('utf8');
+                    if (payload.mimeType === 'text/html') {
+                        bodyText = content.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+                    } else {
+                        bodyText = content;
+                    }
                 }
+
 
                 const aiResult = await processEmailWithAI(subject, bodyText);
 
